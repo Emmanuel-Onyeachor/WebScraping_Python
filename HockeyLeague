@@ -1,0 +1,64 @@
+# import libraries to carry out web scraping exercise
+from bs4 import BeautifulSoup
+import requests
+
+# define website to scrape data from
+url = 'https://www.scrapethissite.com/pages/forms/?page_num=1&per_page=1000'
+
+page = requests.get(url)
+
+soup = BeautifulSoup(page.text, 'html')
+
+# show data from the site
+print(soup)
+
+# print specific table needed from site. 
+# In case of multiple (separate) tables, use find_all and index to get specific table 
+# e.g to get 3rd table - soup.find_all('table')[2]
+table = soup.find('table')
+print(table)
+
+# locate table column headers 
+column_headers = table.find_all('th')
+print(column_headers)
+
+# loop through the column headers, convert to text, trim, and put in a list
+table_column_headers = [header.text.strip() for header in column_headers]
+print(table_column_headers)
+
+# convert the column_headers into a DataFrame (python table)
+import pandas as pd
+
+df = pd.DataFrame(columns = table_column_headers)
+df
+
+# get table rows
+table_rows = table.find_all('tr')
+table_rows
+
+# to import table data - loop through the rows, convert to text, and put in a list. 
+# tr is the row, td is the data in the row
+for row in table_rows[1:]:
+    row_data = row.find_all('td')
+    table_row_data = [data.text.strip() for data in row_data]
+
+    length = len(df)
+    df.loc[length] = table_row_data
+
+df
+
+# import data from python DataFrame into SQL server database
+from sqlalchemy import create_engine
+
+# create database engine to establish connection from python to sql server
+database_url = 'mssql+pyodbc://sa:xxxxxxxxxxx/test?driver=ODBC+Driver+17+for+SQL+Server'
+
+engine = create_engine(database_url)
+
+# load data into SQL
+
+df.to_sql('hockey', con=engine, if_exists='replace', index=False)
+
+# check that data has been loaded
+result = pd.read_sql('hockey', con=engine)
+print(result)
